@@ -48,13 +48,14 @@ router.get('/', isLoggedIn, async (req, res, next) => {
 router.post('/', isLoggedIn, async (req, res, next) => {
   try {
     const expenseToAdd = await db.query(
-      'INSERT INTO expenses (expense_name, price, category, paid_to, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      'INSERT INTO expenses (expense_name, price, category, paid_to, user_id, expense_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [
         req.body.expense_name,
         req.body.price,
         req.body.category,
         req.body.paid_to,
         req.user_id,
+        req.body.expense_date,
       ]
     );
 
