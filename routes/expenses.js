@@ -22,6 +22,7 @@ const isLoggedIn = async (req, res, next) => {
     ]);
 
     req.username = username;
+    //Add user_id to req header
     req.user_id = user.rows[0].id;
 
     // return res.json(user.username);
@@ -32,7 +33,7 @@ const isLoggedIn = async (req, res, next) => {
 };
 
 // -------------------------- EXPENSE ROUTES -------------------------
-//Get all expenses for that user
+//GET all expenses for that user
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
     const expenses = await db.query('SELECT * FROM expenses WHERE user_id=$1', [
@@ -45,6 +46,7 @@ router.get('/', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// ADD AN EXPENSE
 router.post('/', isLoggedIn, async (req, res, next) => {
   try {
     const expenseToAdd = await db.query(
@@ -65,6 +67,7 @@ router.post('/', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// DELETE A USER
 router.delete('/:id', isLoggedIn, async (req, res, next) => {
   try {
     const expenseToDelete = await db.query(
@@ -78,6 +81,42 @@ router.delete('/:id', isLoggedIn, async (req, res, next) => {
 });
 
 //EDIT - Easier to test with form data
-// router.patch('/');
+router.patch('/:id', isLoggedIn, async (req, res, next) => {
+  try {
+    if (req.body.expense_name) {
+      const expenseToUpdate = await db.query(
+        'UPDATE expenses SET expense_name=$1 WHERE user_id=$2 AND id=$3 RETURNING *',
+        [req.body.expense_name, req.user_id, req.params.id]
+      );
+      return res.json(expenseToUpdate.rows[0]);
+    } else if (req.body.price) {
+      const expenseToUpdate = await db.query(
+        'UPDATE expenses SET price=$1 WHERE user_id=$2 AND id=$3 RETURNING *',
+        [req.body.price, req.user_id, req.params.id]
+      );
+      return res.json(expenseToUpdate.rows[0]);
+    } else if (req.body.category) {
+      const expenseToUpdate = await db.query(
+        'UPDATE expenses SET category=$1 WHERE user_id=$2 AND id=$3 RETURNING *',
+        [req.body.category, req.user_id, req.params.id]
+      );
+      return res.json(expenseToUpdate.rows[0]);
+    } else if (req.body.paid_to) {
+      const expenseToUpdate = await db.query(
+        'UPDATE expenses SET paid_to=$1 WHERE user_id=$2 AND id=$3 RETURNING *',
+        [req.body.paid_to, req.user_id, req.params.id]
+      );
+      return res.json(expenseToUpdate.rows[0]);
+    } else if (req.body.expense_date) {
+      const expenseToUpdate = await db.query(
+        'UPDATE expenses SET expense_date=$1 WHERE user_id=$2 AND id=$3 RETURNING *',
+        [req.body.expense_date, req.user_id, req.params.id]
+      );
+      return res.json(expenseToUpdate.rows[0]);
+    }
+  } catch (e) {
+    return next(e);
+  }
+});
 
 module.exports = router;
