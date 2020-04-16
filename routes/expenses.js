@@ -36,11 +36,51 @@ const isLoggedIn = async (req, res, next) => {
 //GET all expenses for that user
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
-    const expenses = await db.query('SELECT * FROM expenses WHERE user_id=$1', [
-      req.user_id,
-    ]);
+    const expenses = await db.query(
+      'SELECT * FROM expenses WHERE user_id=$1 ORDER BY expense_date ASC',
+      [req.user_id]
+    );
     // return res.json(req.user_id);
     return res.json(expenses.rows);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get('/:year', isLoggedIn, async (req, res, next) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(YEAR FROM to_timestamp(expense_date))=$2 ORDER BY expense_date ASC',
+      [req.user_id, req.params.year]
+    );
+
+    return res.json(result.rows);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get('/:year/:month', isLoggedIn, async (req, res, next) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(YEAR FROM to_timestamp(expense_date))=$2 AND EXTRACT(MONTH FROM to_timestamp(expense_date))=$3 ORDER BY expense_date ASC',
+      [req.user_id, req.params.year, req.params.month]
+    );
+
+    return res.json(result.rows);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get('/:year/:month/:day', isLoggedIn, async (req, res, next) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(YEAR FROM to_timestamp(expense_date))=$2 AND EXTRACT(MONTH FROM to_timestamp(expense_date))=$3 AND EXTRACT(DAY FROM to_timestamp(expense_date))=$4 ORDER BY expense_date ASC',
+      [req.user_id, req.params.year, req.params.month, req.params.day]
+    );
+
+    return res.json(result.rows);
   } catch (e) {
     return next(e);
   }
