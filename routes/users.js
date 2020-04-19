@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-require('dotenv').config()
+require('dotenv').config();
 
 const SECRET = process.env.SECRET;
 
@@ -100,6 +100,31 @@ router.post('/login', async (req, res, next) => {
     });
 
     return res.json({ token });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get('/income', isLoggedIn, async (req, res, next) => {
+  try {
+    const result = await db.query('SELECT * FROM users WHERE id=$1', [
+      req.user_id,
+    ]);
+
+    return res.json(result.rows[0])
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.post('/income', isLoggedIn, async (req, res, next) => {
+  try {
+    const result = await db.query(
+      'UPDATE users SET income_total=$2 WHERE id=$1 RETURNING *',
+      [req.user_id, req.body.income_total]
+    );
+
+    return res.json(result.rows[0]);
   } catch (e) {
     return next(e);
   }
