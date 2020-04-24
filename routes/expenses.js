@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const IncomingForm = require('formidable').IncomingForm;
 // installed dotenv from npm to get env variables
 require('dotenv').config();
 
@@ -154,6 +155,59 @@ router.patch('/:id', isLoggedIn, async (req, res, next) => {
       );
       return res.json(expenseToUpdate.rows[0]);
     }
+  } catch (e) {
+    return next(e);
+  }
+});
+
+//Upload a CSV to db
+router.post('/upload', async (req, res, next) => {
+  try {
+    // //Create a new form
+    var form = new IncomingForm();
+
+    // //Emitted whenever a field/file pair has been received
+    // //File is an instance of File
+    // form.on('file', (fields, file) => {
+    //   //Save form to db
+    //   //Access form data by file.path (by using fs module from node)
+    // });
+
+    // //Parses an incoming node req containing form data
+    // // if cb provided, all fields and files are collected & passed to cb
+    // // Parse an incoming file upload
+    // form.parse(req, (err, fields, files) => {
+    //   if (err) {
+    //     next(err);
+    //     return;
+    //   }
+
+    //   console.log('fields: ', fields);
+    //   console.log('files: ', files);
+
+    //   res.json({ fields, files });
+    // });
+
+    // //Emmitted when the entire request has been received and all contained files have finished
+    // // flushing to the disk - Great place to send your response
+    // //Once form is completely parsed, send back a status code
+    // form.on('end', () => {
+    //   res.json();
+    // });
+
+    form.parse(req, (err, fields, files) => {
+      if (err) {
+        console.log('Err: ', err);
+      }
+
+      console.log('Fields: ', fields);
+      console.log('Files: ', files);
+
+      for (let file of Object.entries(files)) {
+        console.log('file: ', file);
+        res.json(file);
+      }
+    });
   } catch (e) {
     return next(e);
   }
