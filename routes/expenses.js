@@ -4,6 +4,9 @@ const db = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const IncomingForm = require('formidable').IncomingForm;
+const fs = require('fs');
+const fastcsv = require('fast-csv');
+const path = require('path');
 // installed dotenv from npm to get env variables
 require('dotenv').config();
 
@@ -163,50 +166,81 @@ router.patch('/:id', isLoggedIn, async (req, res, next) => {
 //Upload a CSV to db
 router.post('/upload', async (req, res, next) => {
   try {
-    // //Create a new form
-    var form = new IncomingForm();
+    //Create a new form
+    const options = {
+      multiples: true,
+    };
+    var form = new IncomingForm(options);
 
-    // //Emitted whenever a field/file pair has been received
-    // //File is an instance of File
-    // form.on('file', (fields, file) => {
-    //   //Save form to db
-    //   //Access form data by file.path (by using fs module from node)
-    // });
-
-    // //Parses an incoming node req containing form data
-    // // if cb provided, all fields and files are collected & passed to cb
-    // // Parse an incoming file upload
-    // form.parse(req, (err, fields, files) => {
-    //   if (err) {
-    //     next(err);
-    //     return;
-    //   }
-
-    //   console.log('fields: ', fields);
-    //   console.log('files: ', files);
-
-    //   res.json({ fields, files });
-    // });
-
-    // //Emmitted when the entire request has been received and all contained files have finished
-    // // flushing to the disk - Great place to send your response
-    // //Once form is completely parsed, send back a status code
-    // form.on('end', () => {
-    //   res.json();
-    // });
+    //Keeps files from being renamed & lets us specify file path to save to
+    form.on('fileBegin', (name, file) => {
+      file.path = `${__dirname}/../uploads/${file.name}`;
+    });
 
     form.parse(req, (err, fields, files) => {
+      //Fast CSV logic
       if (err) {
-        console.log('Err: ', err);
+        return next(err);
       }
 
-      console.log('Fields: ', fields);
-      console.log('Files: ', files);
+      res.json({ fields, files });
+    });
 
-      for (let file of Object.entries(files)) {
-        console.log('file: ', file);
-        res.json(file);
-      }
+    form.on('file', (name, file) => {
+      // Create ReadStream object which ‘pipes’ a CsvParserStream object generated from fast-csv
+      // parse() function:
+      const filePath = path.join(__dirname, `../uploads/${file.name}`);
+      console.log('path: ', filePath);
+      let stream = fs.createReadStream(filePath);
+      let csvData = [];
+      let csvStream = fastcsv
+        .parse()
+        // on ('data') is triggered when a record is parsed so we get the record (data) in the
+        // handler fxn.
+        .on('data', (data) => {
+          // Each record is pushed to the csvData array
+          csvData.push(data);
+          console.log('row: ', data);
+        })
+        // on('end') is triggered after the parsing is done
+        .on('end', () => {
+          // remove the first line: header
+          csvData.shift();
+          // connect to the PostgreSQL database
+          // save csvData
+        });
+      stream.pipe(csvStream);
+    });
+
+    // //Want to read with fast csv after finishes uploading
+    // //file is undefined here for some reason
+    form.once('end', (name, file) => {
+      console.log('Done uploading! Clean up here');
+      //Send JSON file back to browser
+      res.json(file);
+
+      // // Create ReadStream object which ‘pipes’ a CsvParserStream object generated from fast-csv
+      // // parse() function:
+      // console.log('file: ', file);
+      // let stream = fs.createReadStream(file);
+      // let csvData = [];
+      // let csvStream = fastcsv
+      //   .parse()
+      //   // on ('data') is triggered when a record is parsed so we get the record (data) in the
+      //   // handler fxn.
+      //   .on('data', (data) => {
+      //     // Each record is pushed to the csvData array
+      //     csvData.push(data);
+      //     console.log('row: ', data);
+      //   })
+      //   // on('end') is triggered after the parsing is done
+      //   .on('end', () => {
+      //     // remove the first line: header
+      //     csvData.shift();
+      //     // connect to the PostgreSQL database
+      //     // save csvData
+      //   });
+      // stream.pipe(csvStream);
     });
   } catch (e) {
     return next(e);
