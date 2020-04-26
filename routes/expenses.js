@@ -20,7 +20,6 @@ const isLoggedIn = async (req, res, next) => {
 
     const token = jwt.verify(authHeaderValue, SECRET);
     const username = jwt.decode(authHeaderValue).username;
-
     const user = await db.query('SELECT * FROM users WHERE username=$1', [
       username,
     ]);
@@ -28,10 +27,10 @@ const isLoggedIn = async (req, res, next) => {
     req.username = username;
     //Add user_id to req header
     req.user_id = user.rows[0].id;
-
     // return res.json(user.username);
     return next();
   } catch (e) {
+    console.log('error: ', e);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 };
@@ -164,8 +163,11 @@ router.patch('/:id', isLoggedIn, async (req, res, next) => {
 });
 
 //Upload a CSV to db
-router.post('/upload', async (req, res, next) => {
+router.post('/upload', isLoggedIn, async (req, res, next) => {
   try {
+    const user_id = req.user_id;
+    console.log('req: ', user_id);
+
     //Create a new form
     const options = {
       multiples: true,
@@ -186,7 +188,7 @@ router.post('/upload', async (req, res, next) => {
       res.json({ fields, files });
     });
 
-    form.on('file', (name, file) => {
+    await form.on('file', (name, file) => {
       // Create ReadStream object which ‘pipes’ a CsvParserStream object generated from fast-csv
       // parse() function:
       const filePath = path.join(__dirname, `../uploads/${file.name}`);
@@ -194,53 +196,53 @@ router.post('/upload', async (req, res, next) => {
       let stream = fs.createReadStream(filePath);
       let csvData = [];
       let csvStream = fastcsv
-        .parse()
+        .parse({ headers: true })
         // on ('data') is triggered when a record is parsed so we get the record (data) in the
         // handler fxn.
         .on('data', (data) => {
           // Each record is pushed to the csvData array
           csvData.push(data);
-          console.log('row: ', data);
+          // console.log('Expense: ', data['Expense']);
+          // console.log('Price: ', data['Price']);
+          // console.log('Category: ', data['Category']);
+          // console.log('Paid To: ', data['Paid To']);
+          const date = new Date('4/24/20').getTime() / 1000;
+          // console.log('Date: ', date);
+
+          // console.log('row: ', data);
+          const expenseToAdd = db.query(
+            'INSERT INTO expenses (expense_name, price, category, paid_to, user_id, expense_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [
+              data['Expense'],
+              data['Price'],
+              data['Category'],
+              data['Paid To'],
+              req.user_id,
+              date,
+            ]
+          );
         })
         // on('end') is triggered after the parsing is done
         .on('end', () => {
-          // remove the first line: header
-          csvData.shift();
           // connect to the PostgreSQL database
           // save csvData
         });
       stream.pipe(csvStream);
+
+      // Cleanup and delete temp file after reading with csv
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.log(err);
+        }
+      });
     });
 
-    // //Want to read with fast csv after finishes uploading
-    // //file is undefined here for some reason
-    form.once('end', (name, file) => {
+    //Send file back to user in browser
+    form.on('end', (name, file) => {
       console.log('Done uploading! Clean up here');
       //Send JSON file back to browser
       res.json(file);
-
-      // // Create ReadStream object which ‘pipes’ a CsvParserStream object generated from fast-csv
-      // // parse() function:
-      // console.log('file: ', file);
-      // let stream = fs.createReadStream(file);
-      // let csvData = [];
-      // let csvStream = fastcsv
-      //   .parse()
-      //   // on ('data') is triggered when a record is parsed so we get the record (data) in the
-      //   // handler fxn.
-      //   .on('data', (data) => {
-      //     // Each record is pushed to the csvData array
-      //     csvData.push(data);
-      //     console.log('row: ', data);
-      //   })
-      //   // on('end') is triggered after the parsing is done
-      //   .on('end', () => {
-      //     // remove the first line: header
-      //     csvData.shift();
-      //     // connect to the PostgreSQL database
-      //     // save csvData
-      //   });
-      // stream.pipe(csvStream);
+      // const filePath = path.join(__dirname, `../uploads`);
     });
   } catch (e) {
     return next(e);
