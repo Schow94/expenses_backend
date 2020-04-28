@@ -176,7 +176,18 @@ router.post('/upload', isLoggedIn, async (req, res, next) => {
 
     //Keeps files from being renamed & lets us specify file path to save to
     form.on('fileBegin', (name, file) => {
-      file.path = `${__dirname}/../uploads/${file.name}`;
+      const fileType = file.type.split('/').pop();
+      const filePath = path.join(__dirname, `../uploads/${file.name}`);
+
+      console.log('file type: ', file.type);
+
+      if (fileType === 'csv') {
+        file.path = `${__dirname}/../uploads/${file.name}`;
+      } else {
+        console.log(
+          'Incorrect file type ' + fileType + ' is not an accepted file type'
+        );
+      }
     });
 
     form.parse(req, (err, fields, files) => {
@@ -194,6 +205,14 @@ router.post('/upload', isLoggedIn, async (req, res, next) => {
       const filePath = path.join(__dirname, `../uploads/${file.name}`);
       console.log('path: ', filePath);
       let stream = fs.createReadStream(filePath);
+
+      //Handles errors in event that file location cant be found
+      //location/path to file wont be specified for all non-csv files since were choosing
+      // to not set the path for non-csv files
+      stream.on('error', (error) => {
+        res.end(error);
+      });
+
       let csvData = [];
       let csvStream = fastcsv
         .parse({ headers: true })
@@ -202,14 +221,8 @@ router.post('/upload', isLoggedIn, async (req, res, next) => {
         .on('data', (data) => {
           // Each record is pushed to the csvData array
           csvData.push(data);
-          // console.log('Expense: ', data['Expense']);
-          // console.log('Price: ', data['Price']);
-          // console.log('Category: ', data['Category']);
-          // console.log('Paid To: ', data['Paid To']);
-          const date = new Date('4/24/20').getTime() / 1000;
-          // console.log('Date: ', date);
+          const date = new Date(data['Date']).getTime() / 1000;
 
-          // console.log('row: ', data);
           const expenseToAdd = db.query(
             'INSERT INTO expenses (expense_name, price, category, paid_to, user_id, expense_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [
