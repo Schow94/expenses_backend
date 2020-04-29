@@ -6,6 +6,7 @@ const app = express();
 
 const userRoutes = require('./routes/users');
 const expenseRoutes = require('./routes/expenses');
+const landingRoutes = require('./routes/landing');
 
 const PORT = process.env.PORT || 5000;
 
@@ -13,6 +14,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(morgan('tiny'));
 app.use(bodyParser.json());
+
+// --------------------------------------- Routes ----------------------------------------------------
+app.use('/landing', landingRoutes);
 app.use('/users', userRoutes);
 app.use('/expenses', expenseRoutes);
 
