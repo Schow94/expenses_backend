@@ -40,7 +40,7 @@ const isLoggedIn = async (req, res, next) => {
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
     const expenses = await db.query(
-      'SELECT * FROM expenses WHERE user_id=$1 ORDER BY expense_date ASC',
+      'SELECT * FROM expenses WHERE user_id=$1 ORDER BY expense_date DESC',
       [req.user_id]
     );
     // return res.json(req.user_id);
@@ -82,6 +82,25 @@ router.get('/:year/:month/:day', isLoggedIn, async (req, res, next) => {
       'SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(YEAR FROM to_timestamp(expense_date))=$2 AND EXTRACT(MONTH FROM to_timestamp(expense_date))=$3 AND EXTRACT(DAY FROM to_timestamp(expense_date))=$4 ORDER BY expense_date ASC',
       [req.user_id, req.params.year, req.params.month, req.params.day]
     );
+
+    return res.json(result.rows);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+// Returns all expenses w/in a particular week
+// Formatting probably wrong
+router.post('/week/current', isLoggedIn, async (req, res, next) => {
+  try {
+    console.log(req);
+
+    const result = await db.query(
+      'SELECT * FROM expenses WHERE user_id=$1 AND to_timestamp(expense_date)::date BETWEEN $2::date AND $3::date ORDER BY expense_date ASC',
+      [req.user_id, req.body.start, req.body.end]
+    );
+
+    // SELECT * FROM expenses WHERE to_timestamp(expense_date)::date BETWEEN '2020-06-14' AND '2020-06-20';
 
     return res.json(result.rows);
   } catch (e) {
